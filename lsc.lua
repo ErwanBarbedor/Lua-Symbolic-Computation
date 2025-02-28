@@ -111,6 +111,120 @@ local computeAddFactors = function (x, y)
     end
 end
 
+local computeMulFactors = function (x, y)
+    local common, diffx, diffy = findCommon(x, y)
+
+    if not x.children[1]:isEqual(y.children[1]) then return end
+
+    local base = x.children[1]
+    local e1   = x.children[2]
+    local e2   = y.children[2]
+    
+    local p = lsc.Node('sum', {
+        e1,
+        e2
+    })
+
+    local rp = p:reduce()
+
+    if rp:getSize() < p:getSize() then
+        return lsc.Node('pow', {
+            base,
+            rp
+        })
+    end
+end
+
+local factorizeReduce = function (opp, x, y)
+    if x.type ~= opp and y.type ~= opp then
+        if x:isEqual(y) then
+            if opp == "prod" then
+                return lsc.Node(opp, {
+                    lsc.Node('number', 2),
+                    x
+                })
+            else
+                return lsc.Node(opp, {
+                    x,
+                    lsc.Node('number', 2),
+                })
+            end
+        end
+
+    elseif x.type ~= opp then
+        x = lsc.Node(opp, {
+            x,
+            lsc.Node('number', 1),
+            
+        })
+    elseif y.type ~= opp then
+        y = lsc.Node(opp, {
+            y,
+            lsc.Node('number', 1),
+            
+        })
+    end
+
+    if x.type == opp and y.type == opp then
+        local result
+
+        if opp == "prod" then
+            result = computeAddFactors(x, y)
+        elseif opp == "pow" then
+            result = computeMulFactors(x, y)
+        end
+
+        if result then
+            return result
+        end
+    end
+end
+
+local function expandProd (node)
+    local sumElement
+    local otherElements = {}
+
+    for _, child in ipairs(node.children) do
+        if not sumElement and child.type == "sum" then
+            sumElement = child
+        else
+            table.insert(otherElements, child)
+        end
+    end
+
+    if not sumElement then
+        return node
+    end
+
+    local result = lsc.Node('sum')
+
+    for _, child in ipairs(sumElement.children) do
+        result:append(lsc.Node('prod', {
+            lsc.Node('prod', otherElements),
+            child
+        }):expand())
+    end
+
+    return result
+end
+
+local function expandPow (node)
+    local base = node.children[1]
+    local pow  = node.children[2]
+
+    if pow.type ~= "number" or math.floor(pow.leaf) ~= pow.leaf then
+        return node
+    end
+
+    local result = lsc.Node('prod')
+
+    for i=1, pow.leaf do
+        result:append(base:copy())
+    end
+
+    return expandProd (result)
+end
+
 --- Try to computes nodes
 ---@param opp string The operation ("sum" or "prod")
 ---@param x any The first operand 
@@ -131,48 +245,29 @@ lsc.compute = function(opp, x, y)
         return lsc.Node('number', 0)
     elseif x:isEqual(0) and opp == "sum" then
         return y
+    elseif (x:isEqual(0) or x:isEqual(1)) and opp == "pow" then
+        return x
     elseif y:isEqual(0) and opp == "sum" then
         return x
+    elseif y:isEqual(0) and opp == "pow" then
+        return lsc.Node('number', 1)
     elseif x:isEqual(1) and opp == "prod" then
         return y
     elseif y:isEqual(1) and opp == "prod" then
         return x
+    elseif y:isEqual(1) and opp == "pow" then
+        return x
     end
 
     if opp == "sum" then
-        local xx = x
-        local yy = y
-
-        -- Handle special cases for addition
-        if x:isTerminal() and y:isTerminal() then
-            if x:isEqual(y) then
-                -- If adding identical terms, convert to 2*term
-                return lsc.Node('prod', {
-                    lsc.Node('number', 2),
-                    x
-                })
-            end
-        elseif x:isTerminal() then
-            -- Convert terminal to product for factor analysis
-            xx = lsc.Node('prod', {
-                lsc.Node('number', 1),
-                x
-            })
-        elseif y:isTerminal() then
-            -- Convert terminal to product for factor analysis
-            yy = lsc.Node('prod', {
-                lsc.Node('number', 1),
-                y
-            })
+        local result = factorizeReduce("prod", x, y)
+        if result then
+            return result
         end
-
-        -- Try to factor out common terms
-        if xx.type == "prod" and yy.type == "prod" then
-            local result = computeAddFactors(xx, yy)
-
-            if result then
-                return result
-            end
+    elseif opp == "prod" then
+        local result = factorizeReduce("pow", x, y)
+        if result then
+            return result
         end
     end
 
@@ -243,6 +338,11 @@ lsc.mtNode = {
     __mul = __opp("prod"),
     __div = __opp("prod", {right={inverse=true}}),
 
+    __pow = function (x, y)
+        x, y = lsc.convert(x, y)
+        return lsc.Node('pow', {x, y})
+    end,
+
     --- Converts a node to a string representation
     __tostring = function (self)
         if self:isTerminal() then
@@ -251,10 +351,12 @@ lsc.mtNode = {
         end
 
         local result = {}
-        for _, child in ipairs(self.children) do
+        for i, child in ipairs(self.children) do
             local s = tostring(child)
             -- Add parentheses around sum inside product
-            if self.type == "prod" and child.type == "sum" then
+            if (self.type == "prod" and child.type == "sum") then
+                s = "(" .. s .. ")"
+            elseif self.type == "pow" and not child:isTerminal() then
                 s = "(" .. s .. ")"
             end
             table.insert(result, s)
@@ -265,6 +367,8 @@ lsc.mtNode = {
             join = " + "
         elseif self.type == "prod" then
             join = " * "
+        elseif self.type == "pow" then
+            join = "^"
         end
 
         local finalResult = table.concat(result, join)
@@ -273,6 +377,8 @@ lsc.mtNode = {
         finalResult = finalResult:gsub('%-1 %* ', '-')
         finalResult = finalResult:gsub('+ %-', '- ')
         finalResult = finalResult:gsub('([^(])(%-[0-9]+)', '%1(%2)')
+        finalResult = finalResult:gsub('([^0-9]) %* (.)', '%1%2')
+        finalResult = finalResult:gsub('(.) %* ([^0-9])', '%1%2')
 
         return finalResult
     end,
@@ -349,35 +455,27 @@ lsc.mtNode = {
         end,
 
         expand = function (self)
-            if self.type ~= "prod" then
+            if self:isTerminal () then
                 return self
             end
 
-            local sumElement
-            local otherElements = {}
+            local children = {}
 
-            for _, child in ipairs(self.children) do
-                if not sumElement and child.type == "sum" then
-                    sumElement = child
-                else
-                    table.insert(otherElements, child)
-                end
+            for i, child in ipairs(self.children) do
+                children[i] = child:expand()
             end
 
-            if not sumElement then
-                return self
+            local result = lsc.Node(self.type, children)
+
+            if self.type == "prod" then
+                return expandProd(result)
+            elseif self.type == "pow" then
+                return expandPow(result)
+            else
+                return result
             end
 
-            local result = lsc.Node('sum')
-
-            for _, child in ipairs(sumElement.children) do
-                result:append(lsc.Node('prod', {
-                    lsc.Node('prod', otherElements),
-                    child
-                }):expand())
-            end
-
-            return result
+            
         end,
 
         --- Simplifies a node by reducing its children
