@@ -24,6 +24,11 @@ local tests = {
     {"1+(x+1)",           {"reduce"}, "2 + x"},
     {"1+2*(1+x+1)",       {"reduce"}, "1 + 2 * (2 + x)"},
 
+    -- Trivial
+    {"x+0",             {"reduce"}, "x"},
+    {"x*1",             {"reduce"}, "x"},
+    {"x*0",             {"reduce"}, "0"},
+
     -- factorisation reduction
     {"x+x",              {"reduce"}, "2 * x"},
     {"x+2*x",            {"reduce"}, "3 * x"},
@@ -35,7 +40,11 @@ local tests = {
     {"5*x+y-3*y+x*(-2)", {"reduce"}, "3 * x - 2 * y"},
 
     --=== expand ===
-    -- {"2*(x+2)", {"expand"}, "2 * x + 2 * 2"},
+    {"2*(x+2)",     {"expand"}, "2 * x + 2 * 2"},
+    {"(x+2)*5",     {"expand"}, "5 * x + 5 * 2"},
+    {"-(x+2)",      {"expand"}, "-x - 2"},
+    {"x*(x-2)",     {"expand"}, "x * x + x * (-2)"},
+    {"(x+1)*(x-2)", {"expand"}, "x * x + x * (-2) + 1 * x + 1 * (-2)"},
 }
 
 local env = {

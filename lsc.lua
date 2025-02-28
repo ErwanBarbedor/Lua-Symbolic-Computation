@@ -127,6 +127,18 @@ lsc.compute = function(opp, x, y)
         end
     end
 
+    if (x:isEqual(0) or y:isEqual(0)) and opp == "prod" then
+        return lsc.Node('number', 0)
+    elseif x:isEqual(0) and opp == "sum" then
+        return y
+    elseif y:isEqual(0) and opp == "sum" then
+        return x
+    elseif x:isEqual(1) and opp == "prod" then
+        return y
+    elseif y:isEqual(1) and opp == "prod" then
+        return x
+    end
+
     if opp == "sum" then
         local xx = x
         local yy = y
@@ -260,6 +272,7 @@ lsc.mtNode = {
         -- Clean up representation for better readability
         finalResult = finalResult:gsub('%-1 %* ', '-')
         finalResult = finalResult:gsub('+ %-', '- ')
+        finalResult = finalResult:gsub('([^(])(%-[0-9]+)', '%1(%2)')
 
         return finalResult
     end,
@@ -335,6 +348,38 @@ lsc.mtNode = {
             return result
         end,
 
+        expand = function (self)
+            if self.type ~= "prod" then
+                return self
+            end
+
+            local sumElement
+            local otherElements = {}
+
+            for _, child in ipairs(self.children) do
+                if not sumElement and child.type == "sum" then
+                    sumElement = child
+                else
+                    table.insert(otherElements, child)
+                end
+            end
+
+            if not sumElement then
+                return self
+            end
+
+            local result = lsc.Node('sum')
+
+            for _, child in ipairs(sumElement.children) do
+                result:append(lsc.Node('prod', {
+                    lsc.Node('prod', otherElements),
+                    child
+                }):expand())
+            end
+
+            return result
+        end,
+
         --- Simplifies a node by reducing its children
         ---@return table The reduced node
         reduce = function (self)
@@ -381,6 +426,7 @@ lsc.mtNode = {
         ---@param y table The node to compare with
         ---@return boolean True if nodes are equal
         isEqual = function (self, y)
+            y = lsc.convert(y)
             local x = self:reduce()
             y = y:reduce()
 
@@ -440,6 +486,8 @@ lsc.Node = function (nodeType, children)
         for _, child in ipairs(children) do
             node:append(child)
         end
+    elseif children == nil then
+        node.children = {}
     else
         node.leaf = children
     end
