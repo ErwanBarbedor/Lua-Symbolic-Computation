@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="95.742569mm"
+   height="41.707619mm"
+   viewBox="0 0 95.742569 41.707619"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <g
+     id="layer1"
+     transform="translate(-68.903158,-54.524516)">
+    <text
+       xml:space="preserve"
+       style="font-size:8.52132px;line-height:1.25;font-family:'Antykwa Torunska';-inkscape-font-specification:'Antykwa Torunska';text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;stroke-width:0.264584"
+       x="140.67328"
+       y="73.021721"
+       id="text2"><tspan
+         id="tspan2"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Cambria Math';-inkscape-font-specification:'Cambria Math';stroke-width:0.264584"
+         x="140.67328"
+         y="73.021721">Lua Symbolic</tspan><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Cambria Math';-inkscape-font-specification:'Cambria Math';stroke-width:0.264584"
+         x="140.67328"
+         y="83.910538"
+         id="tspan3">Computation</tspan></text>
+    <ellipse
+       style="opacity:1;fill:#00004e;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:3.4;stroke-opacity:1"
+       id="path14"
+       cx="90.683517"
+       cy="76.125252"
+       rx="11.378571"
+       ry="10.833175" />
+    <ellipse
+       style="opacity:0.92278;fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:3.4;stroke-opacity:1"
+       id="path14-6"
+       cx="90.738869"
+       cy="75.378319"
+       rx="21.085712"
+       ry="20.103809" />
+    <path
+       id="path1-9"
+       style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:3.4;stroke-opacity:1"
+       d="m 90.727966,65.579882 a 10.689709,10.49979 0 0 0 -10.689718,10.49972 10.689709,10.49979 0 0 0 10.689718,10.49972 10.689709,10.49979 0 0 0 2.020862,-0.21344 10.689709,10.49979 0 0 1 -8.673791,-10.28752 10.689709,10.49979 0 0 1 8.72746,-10.29862 10.689709,10.49979 0 0 0 -2.074531,-0.19986 z" />
+    <ellipse
+       style="opacity:1;fill:#000011;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:3.4;stroke-opacity:1"
+       id="path14-61"
+       cx="104.69946"
+       cy="60.353508"
+       rx="4.5725012"
+       ry="4.3331594" />
+    <text
+       xml:space="preserve"
+       style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:14.995px;line-height:1.25;font-family:'Brush Script MT';-inkscape-font-specification:'Brush Script MT Italic';text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;opacity:0.92278;fill:#ff0000;stroke:#000000;stroke-width:0.264583;stroke-opacity:1"
+       x="105.1388"
+       y="62.519043"
+       id="text1"
+       transform="scale(0.99738098,1.0026259)"><tspan
+         id="tspan1"
+         style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Brush Script MT';-inkscape-font-specification:'Brush Script MT Italic';fill:#ff0000;stroke:#000000;stroke-width:0.264583;stroke-opacity:1"
+         x="105.1388"
+         y="62.519043">x</tspan></text>
+  </g>
+</svg>
