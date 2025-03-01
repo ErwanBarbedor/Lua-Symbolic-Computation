@@ -9,6 +9,7 @@ local tests = {
     {"2*(x+1)", {}, "2(x + 1)"},
     {"x^2",     {}, "x^2"},
     {"x^(x+1)", {}, "x^(x + 1)"},
+    {"x^7*y",   {}, "x^7 * y"},
 
 
     --=== Reduction ===--
@@ -16,6 +17,7 @@ local tests = {
     {"2*x",         {"reduce"}, "2x"},
     {"x^5+x^5",     {"reduce"}, "2x^5"},
     {"2*x^3-2*x^3", {"reduce"}, "0"},
+    {"x^5 * x^7",   {"reduce"}, "x^12"},
 
     -- simple computation
     {"x+1+1",             {"reduce"}, "x + 2"},
@@ -55,8 +57,12 @@ local tests = {
     {"-(x+2)",      {"expand"}, "-x - 1 * 2"},
     {"x*(x-2)",     {"expand"}, "x * x + x * (-2)"},
     {"(x+1)*(x-2)", {"expand"}, "x * x + x * (-2) + 1 * x + 1 * (-2)"},
+    {"-(x-2)",      {"expand", "reduce"}, "-x + 2"},
     {"(x+1)*(x-1)", {"expand", "reduce"}, "x^2 - 1"},
     {"(a+b)^2",     {"expand", "reduce"}, "a^2 + 2ba + b^2"},
+
+    --=== Pretty ===
+    {"x*2", {"prettyProd"}, "2x"},
 
 }
 

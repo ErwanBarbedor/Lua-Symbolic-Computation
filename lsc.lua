@@ -440,18 +440,26 @@ lsc.mtNode = {
 
             local join = bjoin
             local insertjoin = false
+            
             if i<#self.children then
                 insertjoin = true
                 local nchild = self.children[i+1]
                 
+
                 -- Special formatting for multiplication
                 if self.type == "prod" then
-                    if child.type == "number" and nchild.type ~= "number" and nchild.type ~= "pow" and child.leaf ~= 1 then
+                    if child.type == "number"
+                        and nchild.type ~= "number"
+                        and child.leaf ~= 1 then
                         insertjoin = false
                         if child.leaf == -1 then
                             s = "-"
                         end
-                    elseif child.type ~= "number" and nchild.type ~= "number" and not child:isEqual(nchild) then
+                    elseif child.type ~= "number"
+                        and child.type ~= "pow"
+                        and nchild.type ~= "number"
+                        and nchild.type ~= "pow"
+                        and not child:isEqual(nchild) then
                         insertjoin = false
                     end
                 -- Special formatting for addition with negative numbers
@@ -562,6 +570,8 @@ lsc.mtNode = {
             return result
         end,
 
+        --- Gets the sign of a node
+        ---@return number 1 for positive, -1 for negative
         getSign = function (self)
             if self:isTerminal () then
                 if self.type == "number" then
@@ -645,6 +655,51 @@ lsc.mtNode = {
             end
 
             return lsc.Node(self.type, children)
+        end,
+
+        --- Organizes products for prettier display
+        ---@return table Reorganized node
+        prettyProd = function (self)
+            if self:isTerminal () then
+                return self
+            end
+
+            local children = {}
+
+            for i, child in ipairs(self.children) do
+                children[i] = child:prettyProd()
+            end
+
+            local result = lsc.Node(self.type, children)
+            if self.type == "prod" then
+                result:sortChildren (function (node)
+                    if node.type == "number" then
+                        return 0
+                    elseif node.type == "symbol" then
+                        return 2
+                    else
+                        return 1
+                    end
+                end)
+            end
+
+            return result
+        end,
+
+        --- Sorts children by a given comparison function
+        ---@param f function Function that returns a sort key for each node
+        sortChildren = function (self, f)
+            local t = {}
+
+            for i, child in ipairs(self.children) do
+                t[i] = {child, f(child)}
+            end
+
+            table.sort(t, function(x, y) return x[2] < y[2] end)
+
+            for i, child in ipairs(t) do
+                self.children[i] = t[i][1]
+            end
         end,
 
         --- Checks if two nodes are equal
