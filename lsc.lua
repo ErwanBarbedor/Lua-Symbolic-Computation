@@ -322,6 +322,16 @@ lsc.neg = function (x)
     end
 end
 
+--- Creates an inversion of a node
+---@param x table The node to invert
+---@return table The inverted node
+lsc.inv = function (x)
+    return lsc.Node('pow', {
+        x,
+        lsc.Node('number', -1)
+    })
+end
+
 --- Used to define node metatable operations
 ---@param name string The operation name
 ---@param infos table|nil Optional behavior configuration
@@ -339,6 +349,12 @@ local __opp = function(name, infos)
         end
         if infos.right.negative then
             y = lsc.neg(y)
+        end
+        if infos.left.inverse then
+            x = lsc.inv(x)
+        end
+        if infos.right.inverse then
+            y = lsc.inv(y)
         end
 
         if infos.unary then
@@ -366,8 +382,8 @@ end
 --- Metatable for Node objects with operators and methods
 lsc.mtNode = {
     __add = __opp("sum"),
-    __sub = __opp("sum", {right={negative=true}}),
-    __unm = __opp(nil, {left={negative=true}, unary=true}),
+    __sub = __opp("sum",  {right={negative=true}}),
+    __unm = __opp(nil,    {left={negative=true}, unary=true}),
     __mul = __opp("prod"),
     __div = __opp("prod", {right={inverse=true}}),
 
@@ -388,6 +404,13 @@ lsc.mtNode = {
             local s = tostring(self.leaf)
             return s
         end
+
+        -- if self.type == "pow" and self:getSign() < 0 then
+        --     return "/" .. lsc.Node("pow", {
+        --         self.children[1],
+        --         self.children[2]:neg()
+        --     })
+        -- end
 
         local bjoin
         if self.type == "sum" then
@@ -423,7 +446,7 @@ lsc.mtNode = {
                 
                 -- Special formatting for multiplication
                 if self.type == "prod" then
-                    if child.type == "number" and nchild.type ~= "number" and child.leaf ~= 1 then
+                    if child.type == "number" and nchild.type ~= "number" and nchild.type ~= "pow" and child.leaf ~= 1 then
                         insertjoin = false
                         if child.leaf == -1 then
                             s = "-"
@@ -479,7 +502,7 @@ lsc.mtNode = {
         ---@return table New copy of the node
         copy = function (self)
             if self:isTerminal() then
-                return lsc.Node(self.type, self.leaf, self.negative, self.inverse)
+                return lsc.Node(self.type, self.leaf)
             end
 
             local children = {}
@@ -487,7 +510,7 @@ lsc.mtNode = {
                 children[i] = child:copy()
             end
 
-            return lsc.Node(self.type, children, self.negative, self.inverse)
+            return lsc.Node(self.type, children)
         end,
 
         --- Adds a node to the beginning of children
@@ -537,6 +560,25 @@ lsc.mtNode = {
             end
 
             return result
+        end,
+
+        getSign = function (self)
+            if self:isTerminal () then
+                if self.type == "number" then
+                    if self.leaf < 0 then
+                        return -1
+                    end
+                end
+                
+                return 1
+            end
+
+            local sign = 1
+            for _, child in ipairs(self.children) do
+                sign = sign * child:getSign()
+            end
+
+            return sign
         end,
 
         --- Expands expressions using distributive property
