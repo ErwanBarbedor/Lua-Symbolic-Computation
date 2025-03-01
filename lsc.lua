@@ -350,35 +350,81 @@ lsc.mtNode = {
             return s
         end
 
+        local bjoin
+        if self.type == "sum" then
+            bjoin = " + "
+        elseif self.type == "prod" then
+            bjoin = " * "
+        elseif self.type == "pow" then
+            bjoin = "^"
+        end
+
         local result = {}
         for i, child in ipairs(self.children) do
             local s = tostring(child)
             -- Add parentheses around sum inside product
+            local addp
             if (self.type == "prod" and child.type == "sum") then
-                s = "(" .. s .. ")"
+                addp = true
             elseif self.type == "pow" and not child:isTerminal() then
+                addp = true
+            elseif self.type == "prod" and child.type == "number" and child.leaf < 0 and i>1 then
+                addp = true
+            end
+
+            if addp then
                 s = "(" .. s .. ")"
             end
+
+            local join = bjoin
+            local insertjoin = false
+            if i<#self.children then
+                insertjoin = true
+                local nchild = self.children[i+1]
+                
+                if self.type == "prod" then
+
+                    if child.type == "number" and nchild.type ~= "number" and child.leaf ~= 1 then
+                        insertjoin = false
+                        if child.leaf == -1 then
+                            s = "-"
+                        end
+                    elseif child.type ~= "number" and nchild.type ~= "number" and not child:isEqual(nchild) then
+                        insertjoin = false
+
+                    end
+
+                elseif self.type == "sum" then
+                    if nchild.type == "number" and nchild.leaf < 0 then
+                        join = " - "
+                    elseif nchild.type == "prod" and nchild.children[1].type == "number" and nchild.children[1].leaf < 0 then
+                        join = " - "
+                    end
+                end
+            end
+
+            if i>1 then
+                if self.type == "sum" then
+                    local isneg = false
+                    if child.type == "number" and child.leaf < 0 then
+                        isneg = true
+                    elseif child.type == "prod" and child.children[1].type == "number" and child.children[1].leaf < 0 then
+                        isneg = true
+                    end
+
+                    if isneg then
+                        s = s:gsub('%-', '', 1)
+                    end
+                end
+            end
+
             table.insert(result, s)
+            if insertjoin then
+                table.insert(result, join)
+            end
         end
 
-        local join
-        if self.type == "sum" then
-            join = " + "
-        elseif self.type == "prod" then
-            join = " * "
-        elseif self.type == "pow" then
-            join = "^"
-        end
-
-        local finalResult = table.concat(result, join)
-
-        -- Clean up representation for better readability
-        finalResult = finalResult:gsub('%-1 %* ', '-')
-        finalResult = finalResult:gsub('+ %-', '- ')
-        finalResult = finalResult:gsub('([^(])(%-[0-9]+)', '%1(%2)')
-        finalResult = finalResult:gsub('([^0-9]) %* (.)', '%1%2')
-        finalResult = finalResult:gsub('(.) %* ([^0-9])', '%1%2')
+        local finalResult = table.concat(result)
 
         return finalResult
     end,
