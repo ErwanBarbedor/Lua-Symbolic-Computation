@@ -38,9 +38,9 @@ end
 --- Finds common factors between two non-terminal nodes
 ---@param x table First non-terminal node
 ---@param y table Second non-terminal node
----@return table common Common factors
----@return table diffx Factors unique to x
----@return table diffy Factors unique to y
+---@return table common Common factors found in both nodes
+---@return table diffx Factors unique to x after removing common factors
+---@return table diffy Factors unique to y after removing common factors
 local findCommon = function (x, y)
     assert(not x:isTerminal())
     assert(not y:isTerminal())
@@ -54,6 +54,7 @@ local findCommon = function (x, y)
     local diffx  = x.children
     local diffy  = y.children
 
+    -- Compare each child in x with each child in y
     while xpos <= #diffx do
         local xchild = diffx[xpos]
         local ychild = diffy[ypos]
@@ -66,6 +67,7 @@ local findCommon = function (x, y)
             ypos = ypos+1
         end
 
+        -- If we've checked all children in y, move to next child in x
         if ypos > #diffy then
             xpos = xpos + 1
             ypos = 1
@@ -84,6 +86,7 @@ local computeAddFactors = function (x, y)
 
     local k = lsc.Node('prod', common)
 
+    -- If all terms were common, replace with 1
     if #diffx == 0 then
         diffx = {lsc.Node('number', 1)}
     end
@@ -91,10 +94,12 @@ local computeAddFactors = function (x, y)
         diffy = {lsc.Node('number', 1)}
     end
 
+    -- If no common factors were found, return nil
     if #common == 0 then
         return
     end
 
+    -- Create new expression in factored form: (diffx + diffy) * common
     local p = lsc.Node('sum', {
         lsc.Node('prod', diffx),
         lsc.Node('prod', diffy)
@@ -111,15 +116,21 @@ local computeAddFactors = function (x, y)
     end
 end
 
+--- Attempts to factor out common base in power expressions
+---@param x table First power node
+---@param y table Second power node
+---@return table|nil The factored expression or nil if not applicable
 local computeMulFactors = function (x, y)
     local common, diffx, diffy = findCommon(x, y)
 
+    -- Only factor if both have the same base
     if not x.children[1]:isEqual(y.children[1]) then return end
 
     local base = x.children[1]
     local e1   = x.children[2]
     local e2   = y.children[2]
     
+    -- Create expression like base^(e1+e2)
     local p = lsc.Node('sum', {
         e1,
         e2
@@ -127,6 +138,7 @@ local computeMulFactors = function (x, y)
 
     local rp = p:reduce()
 
+    -- Only apply if it simplifies the expression
     if rp:getSize() < p:getSize() then
         return lsc.Node('pow', {
             base,
@@ -135,7 +147,13 @@ local computeMulFactors = function (x, y)
     end
 end
 
+--- Attempts to factorize or simplify expressions with common terms
+---@param opp string Operation type ("prod" or "pow")
+---@param x table First node
+---@param y table Second node
+---@return table|nil Simplified node or nil if no simplification possible
 local factorizeReduce = function (opp, x, y)
+    -- Handle case where both operands are identical
     if x.type ~= opp and y.type ~= opp then
         if x:isEqual(y) then
             if opp == "prod" then
@@ -150,7 +168,7 @@ local factorizeReduce = function (opp, x, y)
                 })
             end
         end
-
+    -- Convert single operands to operation nodes for uniform handling
     elseif x.type ~= opp then
         x = lsc.Node(opp, {
             x,
@@ -165,6 +183,7 @@ local factorizeReduce = function (opp, x, y)
         })
     end
 
+    -- Apply factorization when both terms are of the same operation type
     if x.type == opp and y.type == opp then
         local result
 
@@ -180,10 +199,14 @@ local factorizeReduce = function (opp, x, y)
     end
 end
 
+--- Expands a product containing a sum (distributive property)
+---@param node table The product node to expand
+---@return table The expanded expression
 local function expandProd (node)
     local sumElement
     local otherElements = {}
 
+    -- Look for a sum in the product
     for _, child in ipairs(node.children) do
         if not sumElement and child.type == "sum" then
             sumElement = child
@@ -192,10 +215,12 @@ local function expandProd (node)
         end
     end
 
+    -- If no sum found, no expansion needed
     if not sumElement then
         return node
     end
 
+    -- Apply distributive property: a*(b+c) = a*b + a*c
     local result = lsc.Node('sum')
 
     for _, child in ipairs(sumElement.children) do
@@ -208,25 +233,31 @@ local function expandProd (node)
     return result
 end
 
+--- Expands a power expression when exponent is a positive integer
+---@param node table The power node to expand
+---@return table The expanded expression
 local function expandPow (node)
     local base = node.children[1]
     local pow  = node.children[2]
 
+    -- Only expand if exponent is a whole number
     if pow.type ~= "number" or math.floor(pow.leaf) ~= pow.leaf then
         return node
     end
 
+    -- Create a product of the base repeated pow times
     local result = lsc.Node('prod')
 
     for i=1, pow.leaf do
         result:append(base:copy())
     end
 
-    return expandProd (result)
+    -- Further expand any products in the result
+    return expandProd(result)
 end
 
---- Try to computes nodes
----@param opp string The operation ("sum" or "prod")
+--- Performs computations between nodes, with various optimizations
+---@param opp string The operation ("sum", "prod", or "pow")
 ---@param x any The first operand 
 ---@param y any The second operand
 ---@return table The resulting node
@@ -241,6 +272,7 @@ lsc.compute = function(opp, x, y)
         end
     end
 
+    -- Handle special cases for identity and zero elements
     if (x:isEqual(0) or y:isEqual(0)) and opp == "prod" then
         return lsc.Node('number', 0)
     elseif x:isEqual(0) and opp == "sum" then
@@ -259,6 +291,7 @@ lsc.compute = function(opp, x, y)
         return x
     end
 
+    -- Try factorization for more complex expressions
     if opp == "sum" then
         local result = factorizeReduce("prod", x, y)
         if result then
@@ -289,7 +322,7 @@ lsc.neg = function (x)
     end
 end
 
---- Used to define node metatable opperations
+--- Used to define node metatable operations
 ---@param name string The operation name
 ---@param infos table|nil Optional behavior configuration
 ---@return function The operation function
@@ -338,12 +371,18 @@ lsc.mtNode = {
     __mul = __opp("prod"),
     __div = __opp("prod", {right={inverse=true}}),
 
+    --- Power operation for nodes
+    ---@param x table Base node
+    ---@param y table Exponent node
+    ---@return table Power expression node
     __pow = function (x, y)
         x, y = lsc.convert(x, y)
         return lsc.Node('pow', {x, y})
     end,
 
     --- Converts a node to a string representation
+    ---@param self table The node to convert to string
+    ---@return string String representation of the node
     __tostring = function (self)
         if self:isTerminal() then
             local s = tostring(self.leaf)
@@ -382,8 +421,8 @@ lsc.mtNode = {
                 insertjoin = true
                 local nchild = self.children[i+1]
                 
+                -- Special formatting for multiplication
                 if self.type == "prod" then
-
                     if child.type == "number" and nchild.type ~= "number" and child.leaf ~= 1 then
                         insertjoin = false
                         if child.leaf == -1 then
@@ -391,9 +430,8 @@ lsc.mtNode = {
                         end
                     elseif child.type ~= "number" and nchild.type ~= "number" and not child:isEqual(nchild) then
                         insertjoin = false
-
                     end
-
+                -- Special formatting for addition with negative numbers
                 elseif self.type == "sum" then
                     if nchild.type == "number" and nchild.leaf < 0 then
                         join = " - "
@@ -403,6 +441,7 @@ lsc.mtNode = {
                 end
             end
 
+            -- Handle negative numbers in sums
             if i>1 then
                 if self.type == "sum" then
                     local isneg = false
@@ -482,7 +521,7 @@ lsc.mtNode = {
         end,
 
         --- Calculates the size of the node tree
-        ---@return number The size of the node
+        ---@return number The size of the node (higher for symbols to prioritize numeric simplifications)
         getSize = function (self)
             if self:isTerminal() then
                 if self.type == "symbol" then
@@ -500,8 +539,10 @@ lsc.mtNode = {
             return result
         end,
 
+        --- Expands expressions using distributive property
+        ---@return table The expanded node
         expand = function (self)
-            if self:isTerminal () then
+            if self:isTerminal() then
                 return self
             end
 
@@ -520,8 +561,6 @@ lsc.mtNode = {
             else
                 return result
             end
-
-            
         end,
 
         --- Simplifies a node by reducing its children
@@ -613,7 +652,7 @@ lsc.mtNode = {
 }
 
 --- Creates a new node of specified type with given children
----@param nodeType string The type of node to create ("number", "symbol", "sum", "prod")
+---@param nodeType string The type of node to create ("number", "symbol", "sum", "prod", "pow")
 ---@param children any Children for the node (table for composite nodes, value for terminals)
 ---@return table The created node
 lsc.Node = function (nodeType, children)
